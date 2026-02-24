@@ -1,0 +1,8 @@
+name = "obsid-net-obsidian-link"
+main = "src/index.js"
+compatibility_date = "2026-02-24"
+workers_dev = false
+
+routes = [
+  { pattern = "obsid.net", custom_domain = true }
+]
