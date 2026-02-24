@@ -1,3 +1,5 @@
+import { SOCIAL_SHARE_PNG_BASE64 } from "./social-share-image.js";
+
 const SKILL_MD = `---
 name: obsid-link-builder
 description: Create and normalize shareable obsid.net links for Obsidian notes. Use when asked to generate links like https://obsid.net/?vault=...&file=... for chat/messages, convert obsidian://open links to obsid.net links, or verify URL encoding of vault/file parameters.
@@ -124,6 +126,16 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
 
+    if (url.pathname === "/social-share.png") {
+      return new Response(base64ToBytes(SOCIAL_SHARE_PNG_BASE64), {
+        status: 200,
+        headers: {
+          "content-type": "image/png",
+          "cache-control": "public, max-age=31536000, immutable",
+        },
+      });
+    }
+
     const skillFile = SKILL_FILES[url.pathname];
     if (skillFile) {
       return new Response(skillFile.body, {
@@ -164,6 +176,7 @@ export default {
 };
 
 function renderHomepage(origin) {
+  const socialImage = `${origin}/social-share.png`;
   const sampleVault = "Obsidian";
   const sampleFile = "Sites/Joost.blog/Posts";
   const sampleUrl =
@@ -191,6 +204,17 @@ function renderHomepage(origin) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>obsid.net - Obsidian Link Redirect</title>
+  <meta property="og:title" content="obsid.net - Obsidian Link Redirect" />
+  <meta property="og:description" content="Share Obsidian links that actually work in chat." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${escapeHtml(origin)}/" />
+  <meta property="og:image" content="${escapeHtml(socialImage)}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="obsid.net - Obsidian Link Redirect" />
+  <meta name="twitter:description" content="Share Obsidian links that actually work in chat." />
+  <meta name="twitter:image" content="${escapeHtml(socialImage)}" />
   <style>
     :root {
       color-scheme: dark;
@@ -627,6 +651,15 @@ function renderHomepage(origin) {
   </script>
 </body>
 </html>`;
+}
+
+function base64ToBytes(base64) {
+  const binary = atob(base64.replace(/\s+/g, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 function escapeHtml(value) {
