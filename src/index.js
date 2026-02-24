@@ -347,6 +347,57 @@ function renderHomepage(origin) {
       border-color: #6b53a5;
       background: #261f38;
     }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .field label {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .field input {
+      width: 100%;
+      box-sizing: border-box;
+      background: #12141a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 0.96rem;
+    }
+    .field input:focus {
+      outline: 1px solid #6b53a5;
+      border-color: #6b53a5;
+    }
+    .converter-actions {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .action-btn {
+      appearance: none;
+      border: 1px solid #4f4275;
+      background: #2a2340;
+      color: #efe9ff;
+      border-radius: 9px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .action-btn:hover {
+      background: #34294f;
+      border-color: #66539a;
+    }
+    .converter-status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.94rem;
+      min-height: 1.2em;
+    }
     @media (max-width: 860px) {
       .grid {
         grid-template-columns: 1fr;
@@ -380,6 +431,24 @@ function renderHomepage(origin) {
           <li>Have agents (Codex, OpenClaw, Claude Code) output safe, canonical note links for reports and task updates.</li>
           <li>Convert existing <code>obsidian://open?vault=...&file=...</code> URIs into public <code>https://obsid.net/...</code> links.</li>
         </ul>
+      </div>
+
+      <div class="panel full" id="converter">
+        <h2>Obsidian URL converter</h2>
+        <p>Paste an <code>obsidian://open?vault=...&file=...</code> URL and generate a shareable <code>obsid.net</code> link.</p>
+        <div class="field">
+          <label for="obsidian-url">Obsidian URL</label>
+          <input id="obsidian-url" type="text" autocomplete="off" spellcheck="false" placeholder="obsidian://open?vault=Obsidian&file=Folder%2FNote" />
+        </div>
+        <div class="field" style="margin-top: 12px;">
+          <label for="obsid-url">obsid.net URL</label>
+          <input id="obsid-url" type="text" readonly placeholder="https://obsid.net/?vault=...&file=..." />
+        </div>
+        <div class="converter-actions">
+          <button class="action-btn" id="convert-btn" type="button">Convert</button>
+          <button class="action-btn" id="copy-converted-btn" type="button">Copy result</button>
+        </div>
+        <p class="converter-status" id="converter-status" aria-live="polite"></p>
       </div>
 
       <div class="panel" id="skill">
@@ -424,7 +493,13 @@ function renderHomepage(origin) {
     </a>
   </footer>
   <script>
+    const origin = ${JSON.stringify(origin)};
     const copyButtons = document.querySelectorAll("[data-copy-target]");
+    const convertButton = document.getElementById("convert-btn");
+    const copyConvertedButton = document.getElementById("copy-converted-btn");
+    const obsidianUrlInput = document.getElementById("obsidian-url");
+    const obsidUrlInput = document.getElementById("obsid-url");
+    const converterStatus = document.getElementById("converter-status");
 
     async function copyText(text) {
       if (navigator.clipboard && window.isSecureContext) {
@@ -465,6 +540,78 @@ function renderHomepage(origin) {
           }, 1200);
         }
       });
+    });
+
+    function convertObsidianUrl(rawUrl) {
+      let parsed;
+      try {
+        parsed = new URL(rawUrl);
+      } catch {
+        return { error: "Enter a valid obsidian URL." };
+      }
+
+      if (parsed.protocol !== "obsidian:" || parsed.hostname !== "open") {
+        return { error: "URL must start with obsidian://open" };
+      }
+
+      const vault = parsed.searchParams.get("vault") || "";
+      const file = parsed.searchParams.get("file") || "";
+
+      if (!vault || !file) {
+        return { error: "URL must include both vault and file parameters." };
+      }
+
+      const normalizedFile = file.replaceAll("\\\\", "/");
+      const converted =
+        origin +
+        "/?vault=" + encodeURIComponent(vault) +
+        "&file=" + encodeURIComponent(normalizedFile);
+
+      return { converted };
+    }
+
+    function runConversion() {
+      const { converted, error } = convertObsidianUrl(obsidianUrlInput.value.trim());
+
+      if (error) {
+        obsidUrlInput.value = "";
+        converterStatus.textContent = error;
+        return false;
+      }
+
+      obsidUrlInput.value = converted;
+      converterStatus.textContent = "Converted successfully.";
+      return true;
+    }
+
+    convertButton?.addEventListener("click", () => {
+      runConversion();
+    });
+
+    obsidianUrlInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        runConversion();
+      }
+    });
+
+    copyConvertedButton?.addEventListener("click", async () => {
+      const hasValue = obsidUrlInput.value.trim().length > 0 || runConversion();
+      if (!hasValue) {
+        return;
+      }
+
+      const original = copyConvertedButton.textContent;
+      try {
+        await copyText(obsidUrlInput.value.trim());
+        copyConvertedButton.textContent = "Copied";
+        converterStatus.textContent = "Copied converted URL.";
+        setTimeout(() => {
+          copyConvertedButton.textContent = original;
+        }, 1200);
+      } catch {
+        converterStatus.textContent = "Could not copy URL.";
+      }
     });
   </script>
 </body>
