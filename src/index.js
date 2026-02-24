@@ -109,7 +109,18 @@ console.log(output);
 NODE
 `;
 
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#090a0d"/>
+  <circle cx="24" cy="32" r="10" fill="none" stroke="#a988ff" stroke-width="6"/>
+  <path d="M36 45L50 19" stroke="#c4b1ff" stroke-width="7" stroke-linecap="round"/>
+</svg>`;
+
 const SKILL_FILES = {
+  "/favicon.svg": {
+    filename: "favicon.svg",
+    contentType: "image/svg+xml; charset=utf-8",
+    body: FAVICON_SVG,
+  },
   "/skills/obsid-link-builder/SKILL.md": {
     filename: "SKILL.md",
     contentType: "text/markdown; charset=utf-8",
@@ -134,6 +145,10 @@ export default {
           "cache-control": "public, max-age=31536000, immutable",
         },
       });
+    }
+
+    if (url.pathname === "/favicon.ico") {
+      return Response.redirect(`${url.origin}/favicon.svg`, 302);
     }
 
     const skillFile = SKILL_FILES[url.pathname];
@@ -161,9 +176,9 @@ export default {
     }
 
     if (!vault || !file) {
-      return new Response("Missing `vault` or `file` query parameter", {
+      return new Response(renderErrorPage(url.origin, hasVault, hasFile), {
         status: 400,
-        headers: { "content-type": "text/plain; charset=utf-8" },
+        headers: { "content-type": "text/html; charset=utf-8" },
       });
     }
 
@@ -215,6 +230,7 @@ function renderHomepage(origin) {
   <meta name="twitter:title" content="obsid.net - Obsidian Link Redirect" />
   <meta name="twitter:description" content="Share Obsidian links that actually work in chat." />
   <meta name="twitter:image" content="${escapeHtml(socialImage)}" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <style>
     :root {
       color-scheme: dark;
@@ -660,6 +676,89 @@ function base64ToBytes(base64) {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes;
+}
+
+function renderErrorPage(origin, hasVault, hasFile) {
+  const sampleVault = "Obsidian";
+  const sampleFile = "Sites/Joost.blog/Posts";
+  const sampleUrl =
+    `${origin}/?vault=${encodeURIComponent(sampleVault)}` +
+    `&file=${encodeURIComponent(sampleFile)}`;
+  const missing = [!hasVault ? "vault" : "", !hasFile ? "file" : ""]
+    .filter(Boolean)
+    .join(" and ");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Missing parameters - obsid.net</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090a0d;
+      --text: #eceef2;
+      --muted: #b2b5bd;
+      --border: #2b2f39;
+      --accent: #a988ff;
+      --panel: rgba(23, 24, 29, 0.92);
+    }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(900px 480px at 68% 12%, rgba(75, 42, 148, 0.2), transparent 60%),
+        radial-gradient(600px 340px at 95% 48%, rgba(88, 49, 171, 0.16), transparent 65%),
+        var(--bg);
+      color: var(--text);
+    }
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 52px 20px 64px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+    }
+    h1 { margin: 0 0 10px; line-height: 1.1; font-size: clamp(2rem, 5vw, 3rem); }
+    p { margin: 0 0 14px; line-height: 1.5; color: var(--muted); font-size: 1.05rem; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+      background: #241f33;
+      border-radius: 4px;
+      padding: 0.02em 0.22em;
+    }
+    pre {
+      margin: 10px 0 0;
+      overflow-x: auto;
+      background: #12141a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      color: var(--text);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="panel">
+      <h1>Missing query parameter</h1>
+      <p>This request is missing <code>${escapeHtml(missing)}</code>. Provide both <code>vault</code> and <code>file</code>.</p>
+      <p>Example:</p>
+      <pre>${escapeHtml(sampleUrl)}</pre>
+      <p style="margin-top: 16px;"><a href="${escapeHtml(origin)}/">Back to homepage</a></p>
+    </div>
+  </main>
+</body>
+</html>`;
 }
 
 function escapeHtml(value) {
