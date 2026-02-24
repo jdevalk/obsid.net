@@ -250,6 +250,9 @@ function renderHomepage(origin) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 18px;
     }
+    .grid > * {
+      min-width: 0;
+    }
     .full {
       grid-column: 1 / -1;
     }
@@ -315,6 +318,8 @@ function renderHomepage(origin) {
       border-radius: 10px;
       padding: 12px;
       margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
     .copy-btn {
       position: absolute;
@@ -399,8 +404,14 @@ function renderHomepage(origin) {
       min-height: 1.2em;
     }
     @media (max-width: 860px) {
+      main {
+        padding: 36px 14px 56px;
+      }
       .grid {
         grid-template-columns: 1fr;
+      }
+      .panel {
+        padding: 16px;
       }
     }
   </style>
